@@ -1,0 +1,63 @@
+<UserControl x:Class="SeatingChartLibrary.Views.SeatingChartControl"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" 
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008" 
+             xmlns:local="clr-namespace:SeatingChartLibrary.ViewModels"
+             xmlns:views="clr-namespace:SeatingChartLibrary.Views"
+             mc:Ignorable="d" 
+             d:DesignHeight="450" d:DesignWidth="800">
+    <UserControl.DataContext>
+        <local:MainViewModel/>
+    </UserControl.DataContext>
+    <UserControl.Resources>
+        <views:ModeToVisibilityConverter x:Key="ModeToVisibilityConverter"/>
+    </UserControl.Resources>
+    <DockPanel>
+        <ToolBar DockPanel.Dock="Top" Visibility="{Binding AppMode, Converter={StaticResource ModeToVisibilityConverter}, ConverterParameter=EditMode}">
+            <Button Content="添加Row" Click="OnAddRowName"/>
+            <Button Content="添加座位" Click="OnAddEmptySeat"/>
+            <Button Content="對齊左" Click="OnAlignLeft"/>
+            <ComboBox ItemsSource="{Binding RowNames}" x:Name="RowCombo"/>
+        </ToolBar>
+        <Grid>
+            <ItemsControl ItemsSource="{Binding Seats}" x:Name="SeatsCanvas">
+                <ItemsControl.ItemsPanel>
+                    <ItemsPanelTemplate>
+                        <Canvas/>
+                    </ItemsPanelTemplate>
+                </ItemsControl.ItemsPanel>
+                <ItemsControl.ItemContainerStyle>
+                    <Style TargetType="ContentPresenter">
+                        <Setter Property="Canvas.Left" Value="{Binding PositionX}"/>
+                        <Setter Property="Canvas.Top" Value="{Binding PositionY}"/>
+                    </Style>
+                </ItemsControl.ItemContainerStyle>
+                <ItemsControl.ItemTemplate>
+                    <DataTemplate>
+                        <Border Width="80" Height="60" Background="LightBlue" RenderTransformOrigin="0.5,0.5"
+                                PreviewMouseLeftButtonDown="OnSeatMouseDown" PreviewMouseMove="OnSeatMouseMove" PreviewMouseLeftButtonUp="OnSeatMouseUp">
+                            <Border.RenderTransform>
+                                <RotateTransform Angle="{Binding Angle}"/>
+                            </Border.RenderTransform>
+                            <StackPanel Margin="5">
+                                <TextBlock Text="{Binding RowName, FallbackValue=未設定}" FontSize="10"/>
+                                <TextBlock Text="{Binding Number, FallbackValue=未設定}" FontSize="10"/>
+                                <TextBlock Text="{Binding Person.Name, FallbackValue=空位}" FontSize="10"/>
+                                <TextBlock Text="{Binding Person.Device.Type, FallbackValue=無}" FontSize="10"/>
+                                <TextBlock Text="{Binding Person.Device.Number, FallbackValue=無}" FontSize="10"/>
+                            </StackPanel>
+                            <Border.ContextMenu>
+                                <ContextMenu Visibility="{Binding DataContext.AppMode, RelativeSource={RelativeSource AncestorType=UserControl}, Converter={StaticResource ModeToVisibilityConverter}, ConverterParameter=EditMode}">
+                                    <MenuItem Header="旋轉 +15°" Click="OnRotate15"/>
+                                    <MenuItem Header="旋轉 -15°" Click="OnRotateMinus15"/>
+                                    <MenuItem Header="編輯屬性" Click="OnEditSeat"/>
+                                </ContextMenu>
+                            </Border.ContextMenu>
+                        </Border>
+                    </DataTemplate>
+                </ItemsControl.ItemTemplate>
+            </ItemsControl>
+        </Grid>
+    </DockPanel>
+</UserControl>
