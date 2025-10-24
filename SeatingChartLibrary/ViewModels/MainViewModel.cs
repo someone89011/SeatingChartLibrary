@@ -2,6 +2,9 @@ using System;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Linq;
+using System.Windows;
+using System.IO;
+using System.Text.Json;
 
 namespace SeatingChartLibrary.ViewModels
 {
@@ -15,6 +18,7 @@ namespace SeatingChartLibrary.ViewModels
         private double _positionY;
         private double _angle;
         private Person _person;
+        private bool _isSelected;
 
         public string RowName { get => _rowName; set { _rowName = value; OnPropertyChanged(nameof(RowName)); } }
         public string Number { get => _number; set { _number = value; OnPropertyChanged(nameof(Number)); } }
@@ -22,6 +26,7 @@ namespace SeatingChartLibrary.ViewModels
         public double PositionY { get => _positionY; set { _positionY = value; OnPropertyChanged(nameof(PositionY)); } }
         public double Angle { get => _angle; set { _angle = value; OnPropertyChanged(nameof(Angle)); } }
         public Person Person { get => _person; set { _person = value; OnPropertyChanged(nameof(Person)); } }
+        public bool IsSelected { get => _isSelected; set { _isSelected = value; OnPropertyChanged(nameof(IsSelected)); } }
 
         public void Rotate(double delta) => Angle = (Angle + delta) % 360;
 
@@ -59,9 +64,31 @@ namespace SeatingChartLibrary.ViewModels
 
         public ObservableCollection<string> RowNames { get; } = new ObservableCollection<string>();
         public ObservableCollection<Seat> Seats { get; } = new ObservableCollection<Seat>();
+        public ObservableCollection<Seat> SelectedSeats { get; } = new ObservableCollection<Seat>();
         public AppMode AppMode { get => _appMode; set { _appMode = value; OnPropertyChanged(nameof(AppMode)); } }
 
         public void SetMode(AppMode mode) => AppMode = mode;
+
+        public void SaveToJson(string path)
+        {
+            var data = new SaveData { RowNames = RowNames, Seats = Seats };
+            var json = JsonSerializer.Serialize(data, new JsonSerializerOptions { WriteIndented = true });
+            File.WriteAllText(path, json);
+        }
+
+        public void LoadFromJson(string path)
+        {
+            var json = File.ReadAllText(path);
+            var data = JsonSerializer.Deserialize<SaveData>(json);
+
+            RowNames.Clear();
+            foreach (var row in data.RowNames ?? new ObservableCollection<string>())
+                RowNames.Add(row);
+
+            Seats.Clear();
+            foreach (var seat in data.Seats ?? new ObservableCollection<Seat>())
+                Seats.Add(seat);
+        }
 
         public void AddRowName(string name)
         {
@@ -100,15 +127,75 @@ namespace SeatingChartLibrary.ViewModels
             };
         }
 
-        public void AlignLeft(Seat[] selectedSeats)
+        public void AlignLeft()
         {
-            if (AppMode != AppMode.EditMode || !selectedSeats.Any()) return;
-            var minX = selectedSeats.Min(s => s.PositionX);
-            foreach (var seat in selectedSeats)
+            if (AppMode != AppMode.EditMode || !SelectedSeats.Any()) return;
+            var minX = SelectedSeats.Min(s => s.PositionX);
+            foreach (var seat in SelectedSeats)
                 seat.PositionX = minX;
+        }
+
+        public void AlignRight()
+        {
+            if (AppMode != AppMode.EditMode || !SelectedSeats.Any()) return;
+            var maxX = SelectedSeats.Max(s => s.PositionX);
+            foreach (var seat in SelectedSeats)
+                seat.PositionX = maxX;
+        }
+
+        public void AlignTop()
+        {
+            if (AppMode != AppMode.EditMode || !SelectedSeats.Any()) return;
+            var minY = SelectedSeats.Min(s => s.PositionY);
+            foreach (var seat in SelectedSeats)
+                seat.PositionY = minY;
+        }
+
+        public void AlignBottom()
+        {
+            if (AppMode != AppMode.EditMode || !SelectedSeats.Any()) return;
+            var maxY = SelectedSeats.Max(s => s.PositionY);
+            foreach (var seat in SelectedSeats)
+                seat.PositionY = maxY;
+        }
+
+        public void SelectSeats(Rect selectionRect)
+        {
+            if (AppMode != AppMode.EditMode) return;
+            SelectedSeats.Clear();
+            const double seatWidth = 80;
+            const double seatHeight = 60;
+            foreach (var seat in Seats)
+            {
+                var seatRect = new Rect(seat.PositionX, seat.PositionY, seatWidth, seatHeight);
+                if (selectionRect.IntersectsWith(seatRect))
+                {
+                    seat.IsSelected = true;
+                    SelectedSeats.Add(seat);
+                }
+                else
+                {
+                    seat.IsSelected = false;
+                }
+            }
+        }
+
+        public void ClearSelection()
+        {
+            if (AppMode != AppMode.EditMode) return;
+            foreach (var seat in SelectedSeats)
+                seat.IsSelected = false;
+            SelectedSeats.Clear();
         }
 
         public event PropertyChangedEventHandler PropertyChanged;
         protected void OnPropertyChanged(string propertyName) => PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
+    }
+
+    // Helper class for serialization/deserialization
+    public class SaveData
+    {
+        public ObservableCollection<string> RowNames { get; set; }
+        public ObservableCollection<Seat> Seats { get; set; }
     }
 }
