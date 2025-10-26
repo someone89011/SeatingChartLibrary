@@ -65,6 +65,7 @@ namespace SeatingChartLibrary.ViewModels
         public ObservableCollection<string> RowNames { get; } = new ObservableCollection<string>();
         public ObservableCollection<Seat> Seats { get; } = new ObservableCollection<Seat>();
         public ObservableCollection<Seat> SelectedSeats { get; } = new ObservableCollection<Seat>();
+
         public AppMode AppMode { get => _appMode; set { _appMode = value; OnPropertyChanged(nameof(AppMode)); } }
 
         public void SetMode(AppMode mode) => AppMode = mode;
@@ -80,11 +81,9 @@ namespace SeatingChartLibrary.ViewModels
         {
             var json = File.ReadAllText(path);
             var data = JsonSerializer.Deserialize<SaveData>(json);
-
             RowNames.Clear();
             foreach (var row in data.RowNames ?? new ObservableCollection<string>())
                 RowNames.Add(row);
-
             Seats.Clear();
             foreach (var seat in data.Seats ?? new ObservableCollection<Seat>())
                 Seats.Add(seat);
@@ -108,7 +107,8 @@ namespace SeatingChartLibrary.ViewModels
         {
             if (AppMode != AppMode.EditMode) return;
             if (Seats.Count >= 1000) throw new InvalidOperationException("超過1000個座位限制");
-            Seats.Add(new Seat { PositionX = x, PositionY = y });
+            var newSeat = new Seat { PositionX = x, PositionY = y }; // 不設置 Number
+            Seats.Add(newSeat);
         }
 
         public void UpdateSeat(Seat seat, string rowName, string number, string personName, string deviceType, string deviceNumber)
@@ -117,7 +117,6 @@ namespace SeatingChartLibrary.ViewModels
             if (!string.IsNullOrEmpty(rowName) && !string.IsNullOrEmpty(number) &&
                 Seats.Any(s => s != seat && s.RowName == rowName && s.Number == number))
                 throw new InvalidOperationException("座位 (RowName, Number) 重複");
-
             seat.RowName = string.IsNullOrEmpty(rowName) ? null : rowName;
             seat.Number = string.IsNullOrEmpty(number) ? null : number;
             seat.Person = string.IsNullOrEmpty(personName) ? null : new Person
@@ -159,21 +158,76 @@ namespace SeatingChartLibrary.ViewModels
                 seat.PositionY = maxY;
         }
 
-        public void SelectSeats(Rect selectionRect)
+        public void SetHorizontalSpacing(double spacing)
+        {
+            if (AppMode != AppMode.EditMode || !SelectedSeats.Any()) return;
+            var sortedSeats = SelectedSeats.OrderBy(s => s.PositionY).ThenBy(s => s.PositionX).ToList();
+            double startX = sortedSeats.First().PositionX;
+            double currentY = sortedSeats.First().PositionY;
+            int index = 0;
+            foreach (var seat in sortedSeats)
+            {
+                if (Math.Abs(seat.PositionY - currentY) > 10) // 新行
+                {
+                    startX = sortedSeats.First().PositionX;
+                    currentY = seat.PositionY;
+                    index = 0;
+                }
+                seat.PositionX = startX + index * spacing;
+                index++;
+            }
+        }
+
+        public void SetVerticalSpacing(double spacing)
+        {
+            if (AppMode != AppMode.EditMode || !SelectedSeats.Any()) return;
+            var sortedSeats = SelectedSeats.OrderBy(s => s.PositionX).ThenBy(s => s.PositionY).ToList();
+            double startY = sortedSeats.First().PositionY;
+            double currentX = sortedSeats.First().PositionX;
+            int index = 0;
+            foreach (var seat in sortedSeats)
+            {
+                if (Math.Abs(seat.PositionX - currentX) > 10) // 新列
+                {
+                    startY = sortedSeats.First().PositionY;
+                    currentX = seat.PositionX;
+                    index = 0;
+                }
+                seat.PositionY = startY + index * spacing;
+                index++;
+            }
+        }
+
+        public void RotateSelectedSeats(double delta)
+        {
+            if (AppMode != AppMode.EditMode || !SelectedSeats.Any()) return;
+            foreach (var seat in SelectedSeats)
+            {
+                seat.Rotate(delta);
+            }
+        }
+
+        public void SelectSeats(Rect selectionRect, bool isAdd = false)
         {
             if (AppMode != AppMode.EditMode) return;
-            SelectedSeats.Clear();
             const double seatWidth = 80;
             const double seatHeight = 60;
+            if (!isAdd)
+            {
+                ClearSelection();
+            }
             foreach (var seat in Seats)
             {
                 var seatRect = new Rect(seat.PositionX, seat.PositionY, seatWidth, seatHeight);
                 if (selectionRect.IntersectsWith(seatRect))
                 {
-                    seat.IsSelected = true;
-                    SelectedSeats.Add(seat);
+                    if (!seat.IsSelected)
+                    {
+                        seat.IsSelected = true;
+                        SelectedSeats.Add(seat);
+                    }
                 }
-                else
+                else if (!isAdd)
                 {
                     seat.IsSelected = false;
                 }
@@ -188,11 +242,44 @@ namespace SeatingChartLibrary.ViewModels
             SelectedSeats.Clear();
         }
 
+        public void SetSeatNumbers(int startNumber, bool isIncrement)
+        {
+            if (AppMode != AppMode.EditMode || !SelectedSeats.Any()) return;
+            var sortedSeats = SelectedSeats.OrderBy(s => s.PositionY).ThenBy(s => s.PositionX).ToList();
+            int currentNumber = startNumber;
+            foreach (var seat in sortedSeats)
+            {
+                string newNumber = currentNumber.ToString();
+                if (Seats.Any(s => s != seat && s.RowName == seat.RowName && s.Number == newNumber))
+                {
+                    throw new InvalidOperationException($"座位 (RowName: {seat.RowName}, Number: {newNumber}) 已存在");
+                }
+                seat.Number = newNumber;
+                currentNumber += isIncrement ? 1 : -1;
+            }
+        }
+
+        public void AutoArrangeSeats(double spacingX = 90, double spacingY = 70, double maxWidth = 800)
+        {
+            if (AppMode != AppMode.EditMode) return;
+            double x = 0, y = 0;
+            foreach (var seat in Seats)
+            {
+                seat.PositionX = x;
+                seat.PositionY = y;
+                x += spacingX;
+                if (x >= maxWidth - spacingX)
+                {
+                    x = 0;
+                    y += spacingY;
+                }
+            }
+        }
+
         public event PropertyChangedEventHandler PropertyChanged;
         protected void OnPropertyChanged(string propertyName) => PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
     }
 
-    // Helper class for serialization/deserialization
     public class SaveData
     {
         public ObservableCollection<string> RowNames { get; set; }

@@ -1,0 +1,15 @@
+﻿<Window x:Class="SeatingChartLibrary.Views.SpacingDialog"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="設定間隔" Height="150" Width="300">
+    <Grid Margin="10">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+        <Label Content="輸入間隔（像素）:" Grid.Row="0"/>
+        <TextBox x:Name="SpacingTextBox" Grid.Row="1" Margin="0,0,0,10"/>
+        <Button Content="OK" Grid.Row="2" Click="OkButton_Click"/>
+    </Grid>
+</Window>

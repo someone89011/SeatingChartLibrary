@@ -1,0 +1,22 @@
+﻿<Window x:Class="SeatingChartLibrary.Views.NumberingDialog"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="設定座位編號" Height="200" Width="300">
+    <Grid Margin="10">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+        <Label Content="起始編號:" Grid.Row="0"/>
+        <TextBox x:Name="StartNumberTextBox" Grid.Row="1" Margin="0,0,0,10"/>
+        <Label Content="編號方式:" Grid.Row="2"/>
+        <ComboBox x:Name="NumberingModeComboBox" Grid.Row="3" Margin="0,0,0,10">
+            <ComboBoxItem Content="遞增 (1, 2, 3, ...)"/>
+            <ComboBoxItem Content="遞減 (..., 3, 2, 1)"/>
+        </ComboBox>
+        <Button Content="OK" Grid.Row="4" Click="OkButton_Click"/>
+    </Grid>
+</Window>

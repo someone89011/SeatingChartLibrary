@@ -1,11 +1,11 @@
 <UserControl x:Class="SeatingChartLibrary.Views.SeatingChartControl"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" 
-             xmlns:d="http://schemas.microsoft.com/expression/blend/2008" 
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:local="clr-namespace:SeatingChartLibrary.ViewModels"
              xmlns:conv="clr-namespace:SeatingChartLibrary.Converters"
-             mc:Ignorable="d" 
+             mc:Ignorable="d"
              x:Name="RootControl"
              d:DesignHeight="450" d:DesignWidth="800">
     <UserControl.Resources>
@@ -16,14 +16,33 @@
     <UserControl.DataContext>
         <local:MainViewModel/>
     </UserControl.DataContext>
-    <DockPanel>
-        <ToolBar DockPanel.Dock="Top" Visibility="{Binding AppMode, Converter={StaticResource ModeToVisibilityConverter}, ConverterParameter=EditMode}">
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+        </Grid.RowDefinitions>
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="3*"/>
+            <ColumnDefinition Width="*"/>
+        </Grid.ColumnDefinitions>
+        <!-- Toolbar -->
+        <ToolBar Grid.Row="0" Grid.ColumnSpan="2" Visibility="{Binding AppMode, Converter={StaticResource ModeToVisibilityConverter}, ConverterParameter=EditMode}">
             <Button Content="添加Row" Click="OnAddRowName"/>
             <Button Content="添加座位" Click="OnAddEmptySeat"/>
             <Button Content="對齊左" Click="OnAlignLeft"/>
+            <Button Content="對齊右" Click="OnAlignRight"/>
+            <Button Content="對齊上" Click="OnAlignTop"/>
+            <Button Content="對齊下" Click="OnAlignBottom"/>
+            <Button Content="設定橫向間隔" Click="OnSetHorizontalSpacing"/>
+            <Button Content="設定縱向間隔" Click="OnSetVerticalSpacing"/>
+            <Button Content="設定座位編號" Click="OnSetSeatNumbers"/>
+            <Button Content="自動排列座位" Click="OnAutoArrangeSeats"/>
+            <Button Content="存儲" Click="OnSaveToJson"/>
+            <Button Content="載入" Click="OnLoadFromJson"/>
             <ComboBox ItemsSource="{Binding RowNames}" x:Name="RowCombo"/>
         </ToolBar>
-        <AdornerDecorator>
+        <!-- Seat Chart -->
+        <AdornerDecorator Grid.Row="1" Grid.Column="0">
             <Grid x:Name="ContainerGrid"
                   PreviewMouseLeftButtonDown="OnGridMouseDown"
                   PreviewMouseMove="OnGridMouseMove"
@@ -31,7 +50,7 @@
                 <ItemsControl ItemsSource="{Binding Seats}" x:Name="SeatsCanvas">
                     <ItemsControl.ItemsPanel>
                         <ItemsPanelTemplate>
-                            <Canvas Width="{Binding ActualWidth, ElementName=ContainerGrid}" 
+                            <Canvas Width="{Binding ActualWidth, ElementName=ContainerGrid}"
                                     Height="{Binding ActualHeight, ElementName=ContainerGrid}"
                                     Background="Transparent"/>
                         </ItemsPanelTemplate>
@@ -44,27 +63,29 @@
                     </ItemsControl.ItemContainerStyle>
                     <ItemsControl.ItemTemplate>
                         <DataTemplate>
-                            <Border Width="80" Height="60" 
+                            <Border Width="80" Height="60"
                                     Background="{Binding IsSelected, Converter={StaticResource BooleanToBrushConverter}}"
                                     RenderTransformOrigin="0.5,0.5"
-                                    PreviewMouseLeftButtonDown="OnSeatMouseDown" 
-                                    PreviewMouseMove="OnSeatMouseMove" 
+                                    PreviewMouseLeftButtonDown="OnSeatMouseDown"
+                                    PreviewMouseRightButtonDown="OnSeatMouseRightButtonDown"
+                                    PreviewMouseMove="OnSeatMouseMove"
                                     PreviewMouseLeftButtonUp="OnSeatMouseUp">
                                 <Border.RenderTransform>
                                     <RotateTransform Angle="{Binding Angle}"/>
                                 </Border.RenderTransform>
                                 <StackPanel Margin="5">
-                                    <TextBlock Text="{Binding RowName, FallbackValue=未設定}" FontSize="10"/>
+                                    <TextBlock Text="{Binding RowName, FallbackValue=未設定}" FontSize="10" Visibility="{Binding DataContext.ShowRowName, ElementName=RootControl, Converter={StaticResource BoolToVisibilityConverter}}"/>
                                     <TextBlock Text="{Binding Number, FallbackValue=未設定}" FontSize="10"/>
                                     <TextBlock Text="{Binding Person.Name, FallbackValue=空位}" FontSize="10"/>
-                                    <TextBlock Text="{Binding Person.Device.Type, FallbackValue=無}" FontSize="10"/>
-                                    <TextBlock Text="{Binding Person.Device.Number, FallbackValue=無}" FontSize="10"/>
+                                    <TextBlock Text="{Binding Person.Device.Type, FallbackValue=無}" FontSize="10" Visibility="{Binding DataContext.ShowDevice, ElementName=RootControl, Converter={StaticResource BoolToVisibilityConverter}}"/>
+                                    <TextBlock Text="{Binding Person.Device.Number, FallbackValue=無}" FontSize="10" Visibility="{Binding DataContext.ShowDevice, ElementName=RootControl, Converter={StaticResource BoolToVisibilityConverter}}"/>
                                 </StackPanel>
                                 <Border.ContextMenu>
                                     <ContextMenu Visibility="{Binding DataContext.AppMode, ElementName=RootControl, Converter={StaticResource ModeToVisibilityConverter}, ConverterParameter=EditMode}">
                                         <MenuItem Header="旋轉 +15°" Click="OnRotate15"/>
                                         <MenuItem Header="旋轉 -15°" Click="OnRotateMinus15"/>
                                         <MenuItem Header="編輯屬性" Click="OnEditSeat"/>
+                                        <MenuItem Header="刪除座位" Click="OnDeleteSeat"/>
                                     </ContextMenu>
                                 </Border.ContextMenu>
                             </Border>
@@ -73,5 +94,43 @@
                 </ItemsControl>
             </Grid>
         </AdornerDecorator>
-    </DockPanel>
+        <!-- Right Panel: Seat List and Seat Info/Display Options -->
+        <Grid Grid.Row="1" Grid.Column="1">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="2*"/>
+                <RowDefinition Height="*"/>
+            </Grid.RowDefinitions>
+            <!-- Seat List -->
+            <Border BorderBrush="Black" BorderThickness="1" Grid.Row="0" Margin="5">
+                <DockPanel>
+                    <TextBlock DockPanel.Dock="Top" Text="座位列表" FontWeight="Bold" Margin="5"/>
+                    <ListView ItemsSource="{Binding Seats}" SelectionMode="Extended" Grid.Row="0">
+                        <ListView.View>
+                            <GridView>
+                                <GridViewColumn Header="Row" DisplayMemberBinding="{Binding RowName}"/>
+                                <GridViewColumn Header="Number" DisplayMemberBinding="{Binding Number}"/>
+                                <GridViewColumn Header="Person" DisplayMemberBinding="{Binding Person.Name}"/>
+                            </GridView>
+                        </ListView.View>
+                    </ListView>
+                </DockPanel>
+            </Border>
+            <!-- Seat Info and Display Options -->
+            <Border BorderBrush="Black" BorderThickness="1" Grid.Row="1" Margin="5">
+                <DockPanel>
+                    <TextBlock DockPanel.Dock="Top" Text="座位資訊" FontWeight="Bold" Margin="5"/>
+                    <StackPanel Margin="5">
+                        <TextBlock Text="{Binding SelectedSeats[0].RowName, StringFormat='Row: {0}', FallbackValue='無選取'}"/>
+                        <TextBlock Text="{Binding SelectedSeats[0].Number, StringFormat='Number: {0}', FallbackValue='無選取'}"/>
+                        <TextBlock Text="{Binding SelectedSeats[0].Person.Name, StringFormat='Person: {0}', FallbackValue='無選取'}"/>
+                        <TextBlock Text="{Binding SelectedSeats[0].Person.Device.Type, StringFormat='Device Type: {0}', FallbackValue='無選取'}"/>
+                        <TextBlock Text="{Binding SelectedSeats[0].Person.Device.Number, StringFormat='Device Number: {0}', FallbackValue='無選取'}"/>
+                        <Label Content="顯示選項"/>
+                        <CheckBox Content="顯示 RowName" IsChecked="{Binding ShowRowName}"/>
+                        <CheckBox Content="顯示 Device" IsChecked="{Binding ShowDevice}"/>
+                    </StackPanel>
+                </DockPanel>
+            </Border>
+        </Grid>
+    </Grid>
 </UserControl>

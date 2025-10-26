@@ -1,5 +1,4 @@
 using System;
-using System.Collections.ObjectModel;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Documents;
@@ -7,6 +6,8 @@ using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Shapes;
 using SeatingChartLibrary.ViewModels;
+using Microsoft.Win32;
+using System.Collections.ObjectModel;
 
 namespace SeatingChartLibrary.Views
 {
@@ -20,6 +21,7 @@ namespace SeatingChartLibrary.Views
         private RubberBandAdorner _rubberBandAdorner;
         private AdornerLayer _adornerLayer;
         private const double GridSize = 10;
+        private Dictionary<Seat, Point> _selectedOffsets = new Dictionary<Seat, Point>();
 
         public SeatingChartControl()
         {
@@ -49,11 +51,98 @@ namespace SeatingChartLibrary.Views
             vm?.AlignLeft();
         }
 
+        private void OnAlignRight(object sender, RoutedEventArgs e)
+        {
+            var vm = DataContext as MainViewModel;
+            vm?.AlignRight();
+        }
+
+        private void OnAlignTop(object sender, RoutedEventArgs e)
+        {
+            var vm = DataContext as MainViewModel;
+            vm?.AlignTop();
+        }
+
+        private void OnAlignBottom(object sender, RoutedEventArgs e)
+        {
+            var vm = DataContext as MainViewModel;
+            vm?.AlignBottom();
+        }
+
+        private void OnSetHorizontalSpacing(object sender, RoutedEventArgs e)
+        {
+            var vm = DataContext as MainViewModel;
+            var dialog = new SpacingDialog();
+            if (dialog.ShowDialog() == true && dialog.Spacing > 0)
+            {
+                vm?.SetHorizontalSpacing(dialog.Spacing);
+            }
+        }
+
+        private void OnSetVerticalSpacing(object sender, RoutedEventArgs e)
+        {
+            var vm = DataContext as MainViewModel;
+            var dialog = new SpacingDialog();
+            if (dialog.ShowDialog() == true && dialog.Spacing > 0)
+            {
+                vm?.SetVerticalSpacing(dialog.Spacing);
+            }
+        }
+
+        private void OnSetSeatNumbers(object sender, RoutedEventArgs e)
+        {
+            var vm = DataContext as MainViewModel;
+            var dialog = new NumberingDialog();
+            if (dialog.ShowDialog() == true)
+            {
+                try
+                {
+                    vm?.SetSeatNumbers(dialog.StartNumber, dialog.IsIncrement);
+                }
+                catch (InvalidOperationException ex)
+                {
+                    MessageBox.Show(ex.Message);
+                }
+            }
+        }
+
+        private void OnAutoArrangeSeats(object sender, RoutedEventArgs e)
+        {
+            var vm = DataContext as MainViewModel;
+            vm?.AutoArrangeSeats(); // ®œ•Œπw≥]∂°πj©Mºe´◊
+        }
+
+        private void OnSaveToJson(object sender, RoutedEventArgs e)
+        {
+            var vm = DataContext as MainViewModel;
+            SaveFileDialog dialog = new SaveFileDialog
+            {
+                Filter = "JSON Files (*.json)|*.json",
+                DefaultExt = ".json"
+            };
+            if (dialog.ShowDialog() == true)
+            {
+                vm?.SaveToJson(dialog.FileName);
+            }
+        }
+
+        private void OnLoadFromJson(object sender, RoutedEventArgs e)
+        {
+            var vm = DataContext as MainViewModel;
+            OpenFileDialog dialog = new OpenFileDialog
+            {
+                Filter = "JSON Files (*.json)|*.json"
+            };
+            if (dialog.ShowDialog() == true)
+            {
+                vm?.LoadFromJson(dialog.FileName);
+            }
+        }
+
         private void OnGridMouseDown(object sender, MouseButtonEventArgs e)
         {
             var vm = DataContext as MainViewModel;
             if (vm?.AppMode != AppMode.EditMode) return;
-
             var mousePos = e.GetPosition(ContainerGrid);
             var hitTestResult = VisualTreeHelper.HitTest(ContainerGrid, mousePos);
             if (hitTestResult.VisualHit is Canvas)
@@ -63,7 +152,6 @@ namespace SeatingChartLibrary.Views
                 _rubberBandAdorner = new RubberBandAdorner(ContainerGrid, _selectionStart);
                 _adornerLayer.Add(_rubberBandAdorner);
                 ContainerGrid.CaptureMouse();
-                vm?.ClearSelection();
                 e.Handled = true;
             }
         }
@@ -71,7 +159,6 @@ namespace SeatingChartLibrary.Views
         private void OnGridMouseMove(object sender, MouseEventArgs e)
         {
             if (!_isSelecting) return;
-
             var currentPos = e.GetPosition(ContainerGrid);
             _rubberBandAdorner.UpdatePosition(currentPos);
         }
@@ -79,16 +166,12 @@ namespace SeatingChartLibrary.Views
         private void OnGridMouseUp(object sender, MouseButtonEventArgs e)
         {
             if (!_isSelecting) return;
-
             _isSelecting = false;
             ContainerGrid.ReleaseMouseCapture();
-
             var vm = DataContext as MainViewModel;
-            var rect = new Rect(
-                _rubberBandAdorner.StartPoint,
-                e.GetPosition(ContainerGrid));
-            vm?.SelectSeats(rect);
-
+            var rect = new Rect(_rubberBandAdorner.StartPoint, e.GetPosition(ContainerGrid));
+            bool isAdd = Keyboard.Modifiers.HasFlag(ModifierKeys.Control) || Keyboard.Modifiers.HasFlag(ModifierKeys.Shift);
+            vm?.SelectSeats(rect, isAdd);
             _adornerLayer.Remove(_rubberBandAdorner);
             _rubberBandAdorner = null;
             e.Handled = true;
@@ -98,31 +181,117 @@ namespace SeatingChartLibrary.Views
         {
             var vm = DataContext as MainViewModel;
             if (vm?.AppMode != AppMode.EditMode) return;
-
-            if (sender is Border border)
+            if (sender is Border border && border.DataContext is Seat seat)
             {
-                _isDragging = true;
-                _draggedSeat = border;
-                var seat = border.DataContext as Seat;
-                var mousePos = e.GetPosition(SeatsCanvas);
-                _dragOffset = new Point(mousePos.X - seat.PositionX, mousePos.Y - seat.PositionY);
-                border.CaptureMouse();
+                bool isCtrl = Keyboard.Modifiers.HasFlag(ModifierKeys.Control);
+                bool isShift = Keyboard.Modifiers.HasFlag(ModifierKeys.Shift);
 
-                if (Keyboard.IsKeyDown(Key.LeftShift) || Keyboard.IsKeyDown(Key.RightShift))
+                if (isCtrl || isShift)
+                {
+                    seat.IsSelected = !seat.IsSelected;
+                    if (seat.IsSelected)
+                        vm.SelectedSeats.Add(seat);
+                    else
+                        vm.SelectedSeats.Remove(seat);
+                }
+                else
                 {
                     if (!seat.IsSelected)
                     {
+                        vm?.ClearSelection();
                         seat.IsSelected = true;
-                        vm.SelectedSeats.Add(seat);
+                        vm?.SelectedSeats.Add(seat);
                     }
                 }
-                else if (Keyboard.IsKeyDown(Key.LeftCtrl) || Keyboard.IsKeyDown(Key.RightCtrl))
+
+                if (vm.SelectedSeats.Any())
                 {
-                    if (!seat.IsSelected)
+                    _isDragging = true;
+                    _draggedSeat = border;
+                    var mousePos = e.GetPosition(SeatsCanvas);
+                    _dragOffset = new Point(mousePos.X - seat.PositionX, mousePos.Y - seat.PositionY);
+
+                    // Calculate offsets for all selected seats relative to the dragged seat
+                    _selectedOffsets.Clear();
+                    foreach (var selectedSeat in vm.SelectedSeats)
                     {
-                        seat.IsSelected = true;
-                        vm.SelectedSeats.Add(seat);
+                        if (selectedSeat != seat)
+                        {
+                            double offsetX = selectedSeat.PositionX - seat.PositionX;
+                            double offsetY = selectedSeat.PositionY - seat.PositionY;
+                            _selectedOffsets[selectedSeat] = new Point(offsetX, offsetY);
+                        }
                     }
+
+                    border.CaptureMouse();
+                }
+                e.Handled = true;
+            }
+        }
+
+        private void OnSeatMouseMove(object sender, MouseEventArgs e)
+        {
+            if (!_isDragging || _draggedSeat == null) return;
+            var vm = DataContext as MainViewModel;
+            var seat = _draggedSeat.DataContext as Seat;
+            var mousePos = e.GetPosition(SeatsCanvas);
+
+            // Move the primary dragged seat
+            double newX = Math.Round((mousePos.X - _dragOffset.X) / GridSize) * GridSize;
+            double newY = Math.Round((mousePos.Y - _dragOffset.Y) / GridSize) * GridSize;
+            double deltaX = newX - seat.PositionX;
+            double deltaY = newY - seat.PositionY;
+
+            // Apply delta to all selected seats
+            foreach (var selectedSeat in vm.SelectedSeats)
+            {
+                selectedSeat.PositionX += deltaX;
+                selectedSeat.PositionY += deltaY;
+            }
+        }
+
+        private void OnSeatMouseUp(object sender, MouseButtonEventArgs e)
+        {
+            if (!_isDragging) return;
+            _isDragging = false;
+            var vm = DataContext as MainViewModel;
+            _draggedSeat.ReleaseMouseCapture();
+            _draggedSeat = null;
+            _selectedOffsets.Clear();
+            e.Handled = true;
+
+            // Check collisions for all selected seats
+            foreach (var seat in vm.SelectedSeats.ToList())
+            {
+                int attempts = 0;
+                while (CheckCollision(seat, vm.Seats) && attempts < 10)
+                {
+                    seat.PositionX += GridSize;
+                    attempts++;
+                }
+                if (attempts >= 10)
+                {
+                    MessageBox.Show("µL™k©Ò∏mÆy¶Ï°A¶Ï∏m≠´≈|°AΩ–≠´∑sΩ’æ„°C");
+                }
+            }
+        }
+
+        private void OnSeatMouseRightButtonDown(object sender, MouseButtonEventArgs e)
+        {
+            var vm = DataContext as MainViewModel;
+            if (vm?.AppMode != AppMode.EditMode) return;
+            if (sender is Border border && border.DataContext is Seat seat)
+            {
+                bool isCtrl = Keyboard.Modifiers.HasFlag(ModifierKeys.Control);
+                bool isShift = Keyboard.Modifiers.HasFlag(ModifierKeys.Shift);
+
+                if (isCtrl || isShift)
+                {
+                    seat.IsSelected = !seat.IsSelected;
+                    if (seat.IsSelected)
+                        vm.SelectedSeats.Add(seat);
+                    else
+                        vm.SelectedSeats.Remove(seat);
                 }
                 else
                 {
@@ -134,73 +303,53 @@ namespace SeatingChartLibrary.Views
             }
         }
 
-        private void OnSeatMouseMove(object sender, MouseEventArgs e)
+        private void OnRotate15(object sender, RoutedEventArgs e)
         {
-            if (!_isDragging || _draggedSeat == null) return;
-
-            var seat = _draggedSeat.DataContext as Seat;
-            var mousePos = e.GetPosition(SeatsCanvas);
-
-            seat.PositionX = Math.Round((mousePos.X - _dragOffset.X) / GridSize) * GridSize;
-            seat.PositionY = Math.Round((mousePos.Y - _dragOffset.Y) / GridSize) * GridSize;
+            var vm = DataContext as MainViewModel;
+            vm?.RotateSelectedSeats(15);
         }
 
-        private void OnSeatMouseUp(object sender, MouseButtonEventArgs e)
+        private void OnRotateMinus15(object sender, RoutedEventArgs e)
         {
-            if (_isDragging)
-            {
-                _isDragging = false;
-                _draggedSeat?.ReleaseMouseCapture();
-                _draggedSeat = null;
-                e.Handled = true;
+            var vm = DataContext as MainViewModel;
+            vm?.RotateSelectedSeats(-15);
+        }
 
+        private void OnEditSeat(object sender, RoutedEventArgs e)
+        {
+            if (sender is MenuItem item && item.Parent is ContextMenu menu && menu.PlacementTarget is Border border && border.DataContext is Seat seat)
+            {
                 var vm = DataContext as MainViewModel;
-                var seat = _draggedSeat.DataContext as Seat;
-                if (CheckCollision(seat, vm.Seats))
+                var dialog = new EditSeatDialog(seat, vm.RowNames);
+                if (dialog.ShowDialog() == true)
                 {
-                    // Ë™øÊï¥‰ΩçÁΩÆ, e.g., seat.PositionX += 10;
+                    vm?.UpdateSeat(seat, dialog.RowName, dialog.Number, dialog.PersonName, dialog.DeviceType, dialog.DeviceNumber);
                 }
+            }
+        }
+
+        private void OnDeleteSeat(object sender, RoutedEventArgs e)
+        {
+            if (sender is MenuItem item && item.Parent is ContextMenu menu && menu.PlacementTarget is Border border && border.DataContext is Seat seat)
+            {
+                var vm = DataContext as MainViewModel;
+                vm?.Seats.Remove(seat);
+                vm?.SelectedSeats.Remove(seat);
             }
         }
 
         private bool CheckCollision(Seat currentSeat, ObservableCollection<Seat> seats)
         {
-            var currentRect = new Rect(currentSeat.PositionX, currentSeat.PositionY, 80, 60);
+            const double seatWidth = 80;
+            const double seatHeight = 60;
+            var currentRect = new Rect(currentSeat.PositionX, currentSeat.PositionY, seatWidth, seatHeight);
             foreach (var seat in seats)
             {
                 if (seat == currentSeat) continue;
-                var seatRect = new Rect(seat.PositionX, seat.PositionY, 80, 60);
+                var seatRect = new Rect(seat.PositionX, seat.PositionY, seatWidth, seatHeight);
                 if (currentRect.IntersectsWith(seatRect)) return true;
             }
             return false;
-        }
-
-        private void OnRotate15(object sender, RoutedEventArgs e)
-        {
-            if (((MenuItem)sender).Parent is ContextMenu menu && menu.PlacementTarget is Border border)
-            {
-                var seat = border.DataContext as Seat;
-                seat.Rotate(15);
-            }
-        }
-
-        private void OnRotateMinus15(object sender, RoutedEventArgs e)
-        {
-            if (((MenuItem)sender).Parent is ContextMenu menu && menu.PlacementTarget is Border border)
-            {
-                var seat = border.DataContext as Seat;
-                seat.Rotate(-15);
-            }
-        }
-
-        private void OnEditSeat(object sender, RoutedEventArgs e)
-        {
-            if (((MenuItem)sender).Parent is ContextMenu menu && menu.PlacementTarget is Border border)
-            {
-                var vm = DataContext as MainViewModel;
-                var seat = border.DataContext as Seat;
-                vm?.UpdateSeat(seat, RowCombo.SelectedItem as string ?? "Á¨¨‰∏ÄË°å", "1", "Âºµ‰∏â", "Á≠ÜÈõª", "DEV001");
-            }
         }
     }
 
@@ -209,7 +358,7 @@ namespace SeatingChartLibrary.Views
         private Point _startPoint;
         private Point _currentPoint;
         private readonly Brush _fill = new SolidColorBrush(Colors.LightBlue) { Opacity = 0.3 };
-        private readonly Pen _pen = new Pen(new SolidColorBrush(Colors.Blue), 1);
+        private readonly Pen _pen = new Pen(Brushes.Blue, 1);
 
         public Point StartPoint => _startPoint;
 
@@ -217,7 +366,7 @@ namespace SeatingChartLibrary.Views
         {
             _startPoint = startPoint;
             _currentPoint = startPoint;
-            IsHitTestVisible = false; // ‰∏çÊìã‰∫ã‰ª∂
+            IsHitTestVisible = false;
         }
 
         public void UpdatePosition(Point currentPos)
@@ -229,7 +378,6 @@ namespace SeatingChartLibrary.Views
         protected override void OnRender(DrawingContext drawingContext)
         {
             base.OnRender(drawingContext);
-
             var rect = new Rect(_startPoint, _currentPoint);
             drawingContext.DrawRectangle(_fill, _pen, rect);
         }
