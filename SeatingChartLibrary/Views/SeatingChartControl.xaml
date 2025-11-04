@@ -77,8 +77,8 @@
                                     <TextBlock Text="{Binding RowName, FallbackValue=未設定}" FontSize="10" Visibility="{Binding DataContext.ShowRowName, ElementName=RootControl, Converter={StaticResource BoolToVisibilityConverter}}"/>
                                     <TextBlock Text="{Binding Number, FallbackValue=未設定}" FontSize="10"/>
                                     <TextBlock Text="{Binding Person.Name, FallbackValue=空位}" FontSize="10"/>
-                                    <TextBlock Text="{Binding Person.Device.Type, FallbackValue=無}" FontSize="10" Visibility="{Binding DataContext.ShowDevice, ElementName=RootControl, Converter={StaticResource BoolToVisibilityConverter}}"/>
-                                    <TextBlock Text="{Binding Person.Device.Number, FallbackValue=無}" FontSize="10" Visibility="{Binding DataContext.ShowDevice, ElementName=RootControl, Converter={StaticResource BoolToVisibilityConverter}}"/>
+                                    <TextBlock Text="{Binding Person.Device.TypeUuid, FallbackValue=無}" FontSize="10" Visibility="{Binding DataContext.ShowDevice, ElementName=RootControl, Converter={StaticResource BoolToVisibilityConverter}}"/>
+                                    <TextBlock Text="{Binding Person.Device.DeviceUuid, FallbackValue=無}" FontSize="10" Visibility="{Binding DataContext.ShowDevice, ElementName=RootControl, Converter={StaticResource BoolToVisibilityConverter}}"/>
                                 </StackPanel>
                                 <Border.ContextMenu>
                                     <ContextMenu Visibility="{Binding DataContext.AppMode, ElementName=RootControl, Converter={StaticResource ModeToVisibilityConverter}, ConverterParameter=EditMode}">
@@ -123,8 +123,8 @@
                         <TextBlock Text="{Binding SelectedSeats[0].RowName, StringFormat='Row: {0}', FallbackValue='無選取'}"/>
                         <TextBlock Text="{Binding SelectedSeats[0].Number, StringFormat='Number: {0}', FallbackValue='無選取'}"/>
                         <TextBlock Text="{Binding SelectedSeats[0].Person.Name, StringFormat='Person: {0}', FallbackValue='無選取'}"/>
-                        <TextBlock Text="{Binding SelectedSeats[0].Person.Device.Type, StringFormat='Device Type: {0}', FallbackValue='無選取'}"/>
-                        <TextBlock Text="{Binding SelectedSeats[0].Person.Device.Number, StringFormat='Device Number: {0}', FallbackValue='無選取'}"/>
+                        <TextBlock Text="{Binding SelectedSeats[0].Person.Device.TypeUuid, StringFormat='Device Type: {0}', FallbackValue='無選取'}"/>
+                        <TextBlock Text="{Binding SelectedSeats[0].Person.Device.DeviceUuid, StringFormat='Device Number: {0}', FallbackValue='無選取'}"/>
                         <Label Content="顯示選項"/>
                         <CheckBox Content="顯示 RowName" IsChecked="{Binding ShowRowName}"/>
                         <CheckBox Content="顯示 Device" IsChecked="{Binding ShowDevice}"/>

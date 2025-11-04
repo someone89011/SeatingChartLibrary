@@ -1,13 +1,14 @@
 using System;
+using System.Collections.Generic;
+using System.Collections.ObjectModel;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Documents;
 using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Shapes;
-using SeatingChartLibrary.ViewModels;
 using Microsoft.Win32;
-using System.Collections.ObjectModel;
+using SeatingChartLibrary.ViewModels;
 
 namespace SeatingChartLibrary.Views
 {
@@ -34,70 +35,61 @@ namespace SeatingChartLibrary.Views
             var dialog = new AddRowDialog();
             if (dialog.ShowDialog() == true && !string.IsNullOrEmpty(dialog.RowName))
             {
-                var vm = DataContext as MainViewModel;
-                vm?.AddRowName(dialog.RowName);
+                (DataContext as MainViewModel)?.AddRowName(dialog.RowName);
             }
         }
 
         private void OnAddEmptySeat(object sender, RoutedEventArgs e)
         {
-            var vm = DataContext as MainViewModel;
-            vm?.AddEmptySeat(100, 100);
+            (DataContext as MainViewModel)?.AddEmptySeat(100, 100);
         }
 
         private void OnAlignLeft(object sender, RoutedEventArgs e)
         {
-            var vm = DataContext as MainViewModel;
-            vm?.AlignLeft();
+            (DataContext as MainViewModel)?.AlignLeft();
         }
 
         private void OnAlignRight(object sender, RoutedEventArgs e)
         {
-            var vm = DataContext as MainViewModel;
-            vm?.AlignRight();
+            (DataContext as MainViewModel)?.AlignRight();
         }
 
         private void OnAlignTop(object sender, RoutedEventArgs e)
         {
-            var vm = DataContext as MainViewModel;
-            vm?.AlignTop();
+            (DataContext as MainViewModel)?.AlignTop();
         }
 
         private void OnAlignBottom(object sender, RoutedEventArgs e)
         {
-            var vm = DataContext as MainViewModel;
-            vm?.AlignBottom();
+            (DataContext as MainViewModel)?.AlignBottom();
         }
 
         private void OnSetHorizontalSpacing(object sender, RoutedEventArgs e)
         {
-            var vm = DataContext as MainViewModel;
             var dialog = new SpacingDialog();
             if (dialog.ShowDialog() == true && dialog.Spacing > 0)
             {
-                vm?.SetHorizontalSpacing(dialog.Spacing);
+                (DataContext as MainViewModel)?.SetHorizontalSpacing(dialog.Spacing);
             }
         }
 
         private void OnSetVerticalSpacing(object sender, RoutedEventArgs e)
         {
-            var vm = DataContext as MainViewModel;
             var dialog = new SpacingDialog();
             if (dialog.ShowDialog() == true && dialog.Spacing > 0)
             {
-                vm?.SetVerticalSpacing(dialog.Spacing);
+                (DataContext as MainViewModel)?.SetVerticalSpacing(dialog.Spacing);
             }
         }
 
         private void OnSetSeatNumbers(object sender, RoutedEventArgs e)
         {
-            var vm = DataContext as MainViewModel;
             var dialog = new NumberingDialog();
             if (dialog.ShowDialog() == true)
             {
                 try
                 {
-                    vm?.SetSeatNumbers(dialog.StartNumber, dialog.IsIncrement);
+                    (DataContext as MainViewModel)?.SetSeatNumbers(dialog.StartNumber, dialog.IsIncrement);
                 }
                 catch (InvalidOperationException ex)
                 {
@@ -108,34 +100,24 @@ namespace SeatingChartLibrary.Views
 
         private void OnAutoArrangeSeats(object sender, RoutedEventArgs e)
         {
-            var vm = DataContext as MainViewModel;
-            vm?.AutoArrangeSeats(); // 使用預設間隔和寬度
+            (DataContext as MainViewModel)?.AutoArrangeSeats();
         }
 
         private void OnSaveToJson(object sender, RoutedEventArgs e)
         {
-            var vm = DataContext as MainViewModel;
-            SaveFileDialog dialog = new SaveFileDialog
-            {
-                Filter = "JSON Files (*.json)|*.json",
-                DefaultExt = ".json"
-            };
+            var dialog = new SaveFileDialog { Filter = "JSON files (*.json)|*.json" };
             if (dialog.ShowDialog() == true)
             {
-                vm?.SaveToJson(dialog.FileName);
+                //(DataContext as MainViewModel)?.SaveToJson(dialog.FileName);
             }
         }
 
         private void OnLoadFromJson(object sender, RoutedEventArgs e)
         {
-            var vm = DataContext as MainViewModel;
-            OpenFileDialog dialog = new OpenFileDialog
-            {
-                Filter = "JSON Files (*.json)|*.json"
-            };
+            var dialog = new OpenFileDialog { Filter = "JSON files (*.json)|*.json" };
             if (dialog.ShowDialog() == true)
             {
-                vm?.LoadFromJson(dialog.FileName);
+                //(DataContext as MainViewModel)?.LoadFromJson(dialog.FileName);
             }
         }
 
@@ -210,8 +192,6 @@ namespace SeatingChartLibrary.Views
                     _draggedSeat = border;
                     var mousePos = e.GetPosition(SeatsCanvas);
                     _dragOffset = new Point(mousePos.X - seat.PositionX, mousePos.Y - seat.PositionY);
-
-                    // Calculate offsets for all selected seats relative to the dragged seat
                     _selectedOffsets.Clear();
                     foreach (var selectedSeat in vm.SelectedSeats)
                     {
@@ -222,7 +202,6 @@ namespace SeatingChartLibrary.Views
                             _selectedOffsets[selectedSeat] = new Point(offsetX, offsetY);
                         }
                     }
-
                     border.CaptureMouse();
                 }
                 e.Handled = true;
@@ -235,14 +214,10 @@ namespace SeatingChartLibrary.Views
             var vm = DataContext as MainViewModel;
             var seat = _draggedSeat.DataContext as Seat;
             var mousePos = e.GetPosition(SeatsCanvas);
-
-            // Move the primary dragged seat
             double newX = Math.Round((mousePos.X - _dragOffset.X) / GridSize) * GridSize;
             double newY = Math.Round((mousePos.Y - _dragOffset.Y) / GridSize) * GridSize;
             double deltaX = newX - seat.PositionX;
             double deltaY = newY - seat.PositionY;
-
-            // Apply delta to all selected seats
             foreach (var selectedSeat in vm.SelectedSeats)
             {
                 selectedSeat.PositionX += deltaX;
@@ -254,13 +229,11 @@ namespace SeatingChartLibrary.Views
         {
             if (!_isDragging) return;
             _isDragging = false;
-            var vm = DataContext as MainViewModel;
             _draggedSeat.ReleaseMouseCapture();
             _draggedSeat = null;
             _selectedOffsets.Clear();
             e.Handled = true;
-
-            // Check collisions for all selected seats
+            var vm = DataContext as MainViewModel;
             foreach (var seat in vm.SelectedSeats.ToList())
             {
                 int attempts = 0;
@@ -305,14 +278,12 @@ namespace SeatingChartLibrary.Views
 
         private void OnRotate15(object sender, RoutedEventArgs e)
         {
-            var vm = DataContext as MainViewModel;
-            vm?.RotateSelectedSeats(15);
+            (DataContext as MainViewModel)?.RotateSelectedSeats(15);
         }
 
         private void OnRotateMinus15(object sender, RoutedEventArgs e)
         {
-            var vm = DataContext as MainViewModel;
-            vm?.RotateSelectedSeats(-15);
+            (DataContext as MainViewModel)?.RotateSelectedSeats(-15);
         }
 
         private void OnEditSeat(object sender, RoutedEventArgs e)
@@ -320,7 +291,12 @@ namespace SeatingChartLibrary.Views
             if (sender is MenuItem item && item.Parent is ContextMenu menu && menu.PlacementTarget is Border border && border.DataContext is Seat seat)
             {
                 var vm = DataContext as MainViewModel;
-                var dialog = new EditSeatDialog(seat, vm.RowNames);
+                if (vm == null) return; // Always good to be safe
+
+                // Get a fresh list of names from your *real* data source
+                var allRowNames = vm.Rows.Select(row => row.Name).ToList();
+
+                var dialog = new EditSeatDialog(seat, allRowNames); // <-- Pass the correct list
                 if (dialog.ShowDialog() == true)
                 {
                     vm?.UpdateSeat(seat, dialog.RowName, dialog.Number, dialog.PersonName, dialog.DeviceType, dialog.DeviceNumber);
@@ -332,9 +308,7 @@ namespace SeatingChartLibrary.Views
         {
             if (sender is MenuItem item && item.Parent is ContextMenu menu && menu.PlacementTarget is Border border && border.DataContext is Seat seat)
             {
-                var vm = DataContext as MainViewModel;
-                vm?.Seats.Remove(seat);
-                vm?.SelectedSeats.Remove(seat);
+                //(DataContext as MainViewModel)?.DeleteSeat(seat);
             }
         }
 

@@ -12,15 +12,15 @@ namespace SeatingChartLibrary.Views
         public string DeviceType { get; private set; }
         public string DeviceNumber { get; private set; }
 
-        public EditSeatDialog(Seat seat, ObservableCollection<string> rowNames)
+        public EditSeatDialog(Seat seat, IEnumerable<string> rowNames)
         {
             InitializeComponent();
             RowNameComboBox.ItemsSource = rowNames;
             RowNameComboBox.Text = seat.RowName;
             NumberTextBox.Text = seat.Number;
             PersonNameTextBox.Text = seat.Person?.Name;
-            DeviceTypeTextBox.Text = seat.Person?.Device?.Type;
-            DeviceNumberTextBox.Text = seat.Person?.Device?.Number;
+            DeviceTypeTextBox.Text = ""; //seat.Person?.Device?.Type;
+            DeviceNumberTextBox.Text = ""; //seat.Person?.Device?.Number;
         }
 
         private void OkButton_Click(object sender, RoutedEventArgs e)

@@ -13,7 +13,7 @@ namespace SeatingChartLibrary.Converters
                 string row = seat.RowName ?? "";
                 string num = seat.Number ?? "未設定";
                 string person = seat.Person?.Name ?? "空位";
-                string device = seat.Person?.Device != null ? $"{seat.Person.Device.Type}/{seat.Person.Device.Number}" : "無";
+                string device = seat.Person?.Device != null ? $"{seat.Person.Device.TypeUuid}/{seat.Person.Device.DeviceUuid}" : "無";
                 return $"{row}{num}\n{person}\n{device}";
             }
             return "未設定";

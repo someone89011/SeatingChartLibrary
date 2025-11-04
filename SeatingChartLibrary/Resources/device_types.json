@@ -1,0 +1,38 @@
+{
+    "device_types": [
+        {
+            "uuid": "7573",
+            "type": "WV800",
+            "schema": [
+                {
+                    "field": "id",
+                    "type": "integer",
+                    "required": true,
+                    "unique": "type"
+                }
+            ]
+        },
+        {
+            "uuid": "3976",
+            "type": "DUALMCU",
+            "schema": [
+                {
+                    "field": "console",
+                    "type": "integer",
+                    "required": true
+                },
+                {
+                    "field": "gate",
+                    "type": "integer",
+                    "required": true
+                },
+                {
+                    "field": "id",
+                    "type": "integer",
+                    "required": true,
+                    "unique": "console+gate"
+                }
+            ]
+        }
+    ]
+}
